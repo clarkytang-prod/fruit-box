@@ -1,4 +1,3 @@
-\
 import React, { useEffect, useRef, useState } from "react";
 
 // Fruit Box (Add-to-10) — v1.6 minimal export build
@@ -8,7 +7,7 @@ import React, { useEffect, useRef, useState } from "react";
 // • 2-minute timer bar on right
 // • Uploads: custom apple sprite, end-screen pictures (3–5), custom BGM (mp3/wav/ogg)
 // • Touch + mouse input
-// • Spring→fall+fade "flying" animation; +N Kisses toast
+// • Spring→fall+fade animation; +N Kisses toast
 
 type Apple = { id: number; x: number; y: number; r: number; v: number };
 type Toast = { id: number; x: number; y: number; life: number; max: number; text: string };
@@ -116,7 +115,7 @@ export default function FruitBox() {
     // DPR + resize
     const resize = ()=>{
       const cvs = canvasRef.current!;
-      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const dpr = Math.max(1, (window.devicePixelRatio || 1));
       const parent = cvs.parentElement as HTMLElement;
       const targetW = Math.min(parent.clientWidth, W);
       const scale = targetW / W;
@@ -211,10 +210,10 @@ export default function FruitBox() {
         }
       }
 
-      raf = requestAnimationFrame(render);
+      requestAnimationFrame(render);
     };
-    raf = requestAnimationFrame(render);
-    return ()=>{ cancelAnimationFrame(raf); ro.disconnect(); };
+    requestAnimationFrame(render);
+    return ()=>{ ro.disconnect(); };
   }, []);
 
   // Input (mouse + touch)
@@ -278,143 +277,4 @@ export default function FruitBox() {
 
     return ()=>{
       cvs.removeEventListener("mousedown", onMouseDown);
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-      cvs.removeEventListener("touchstart", onTouchStart as any);
-      window.removeEventListener("touchmove", onTouchMove as any);
-      window.removeEventListener("touchend", onTouchEnd as any);
-    };
-  }, []);
-
-  // Uploads
-  function onSprite(file: File){
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = ()=> setSpriteImg(img);
-    img.src = url;
-  }
-  function onGallery(files: FileList | null){
-    if (!files) return;
-    const imgs: HTMLImageElement[] = [];
-    let loaded = 0;
-    for (const f of Array.from(files)){
-      const url = URL.createObjectURL(f);
-      const img = new Image();
-      img.onload = ()=>{ imgs.push(img); loaded++; if (loaded===files.length) setGallery(imgs); };
-      img.src = url;
-    }
-  }
-
-  return (
-    <div className="w-full min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-rose-50 to-purple-50 py-8">
-      <div className="max-w-[1040px] w-full grid grid-cols-1 lg:grid-cols-[auto,320px] gap-6 p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <h1 className="text-2xl font-semibold">우리 둘만의 Fruit Box</h1>
-              <p className="text-sm text-neutral-600">합계 10 — v1.6</p>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={()=>{ resetBoard(); setMode("start"); }} className="px-3 py-1.5 rounded-xl bg-neutral-900 text-white text-sm shadow">Reset</button>
-              <button onClick={toggleBgm} className="px-3 py-1.5 rounded-xl bg-fuchsia-600 text-white text-sm shadow">BGM {bgmAudio && !bgmAudio.paused ? "On" : "Off"}</button>
-            </div>
-          </div>
-
-          <div className="relative flex items-center justify-center">
-            <canvas ref={canvasRef} width={W} height={H} className="rounded-xl border border-neutral-300 bg-white" />
-          </div>
-
-          <div className="mt-2 flex items-center gap-4 text-sm text-neutral-700">
-            <span className="rounded-xl bg-neutral-100 px-3 py-2">Kisses: {kisses}</span>
-            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={light} onChange={(e)=>setLight(e.target.checked)} /><span>Light colors</span></label>
-            <span className="text-xs text-neutral-500 ml-auto">Timer: {(timeLeft/1000).toFixed(0)}s</span>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-xl p-4">
-          <h2 className="text-lg font-semibold mb-3">Personalize</h2>
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm font-medium">Custom apple sprite</label>
-              <input className="mt-1 block w-full text-sm" type="file" accept="image/*" onChange={(e)=>{ const f=e.target.files?.[0]; if (f) onSprite(f); }} />
-              <p className="text-xs text-neutral-500 mt-1">PNG with transparency recommended (256–512px). Rounded clipping is applied.</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium">End screen pictures (3–5)</label>
-              <input className="mt-1 block w-full text-sm" type="file" accept="image/*" multiple onChange={(e)=> onGallery(e.target.files)} />
-              <p className="text-xs text-neutral-500 mt-1">Shown next to the final score. If none, a 😊 placeholder appears.</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Custom BGM (mp3/wav/ogg)</label>
-              <input className="mt-1 block w-full text-sm" type="file" accept="audio/*" onChange={(e)=>{ const f=e.target.files?.[0]; if (f) onBgm(f); }} />
-              <p className="text-xs text-neutral-500 mt-1">Upload a short, looping-friendly track. Tap the BGM button to play/pause.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Helpers
-function drawApple(
-  ctx: CanvasRenderingContext2D,
-  a: Apple,
-  sprite: HTMLImageElement | null,
-  light: boolean,
-  alpha = 1
-){
-  const {x,y,r,v} = a;
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.closePath(); ctx.clip();
-  if (sprite){ ctx.drawImage(sprite, x-r, y-r, r*2, r*2); }
-  else { const g = ctx.createRadialGradient(x - r*0.4, y - r*0.4, r*0.1, x, y, r);
-         g.addColorStop(0, light? "#ff8f8f":"#ff5a5a"); g.addColorStop(1, light? "#ff4d4d":"#cc2b2b");
-         ctx.fillStyle = g; ctx.fillRect(x-r, y-r, r*2, r*2); }
-  ctx.restore();
-  ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle="#fff";
-  ctx.font = `${Math.max(12,r)}px ui-sans-serif, system-ui`; ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillText(String(v), x, y+1); ctx.restore();
-}
-
-function snappedRect(sx:number, sy:number, ex:number, ey:number, margin:number, cellW:number, cellH:number, cols:number, rows:number){
-  const toCol = (x:number)=> Math.max(0, Math.min(cols-1, Math.floor((x - margin)/cellW)));
-  const toRow = (y:number)=> Math.max(0, Math.min(rows-1, Math.floor((y - margin)/cellH)));
-  const c1 = toCol(Math.min(sx,ex)), c2 = toCol(Math.max(sx,ex));
-  const r1 = toRow(Math.min(sy,ey)), r2 = toRow(Math.max(sy,ey));
-  const x1 = margin + c1*cellW, x2 = margin + (c2+1)*cellW;
-  const y1 = margin + r1*cellH, y2 = margin + (r2+1)*cellH;
-  return { x1,y1,x2,y2 };
-}
-
-function drawTimerBar(ctx:CanvasRenderingContext2D, ratio:number){
-  const x =  W - 22, y = 16, w = 8, h = H - 32;
-  ctx.save(); ctx.fillStyle="#e6e6e6"; ctx.fillRect(x,y,w,h);
-  const fillH = Math.max(0, h*ratio), fillY = y + (h - fillH);
-  const g = ctx.createLinearGradient(0,y,0,y+h); g.addColorStop(0,"#7be495"); g.addColorStop(1,"#00b894");
-  ctx.fillStyle = g; ctx.fillRect(x,fillY,w,fillH); ctx.restore();
-}
-
-function drawButton(ctx:CanvasRenderingContext2D, x:number, y:number, w:number, h:number, label:string){
-  ctx.save(); ctx.fillStyle="#1f2937"; ctx.fillRect(x,y,w,h);
-  ctx.fillStyle="#fff"; ctx.font="16px ui-sans-serif, system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillText(label, x+w/2, y+h/2); ctx.restore();
-}
-function hitButton(px:number, py:number, x:number, y:number, w:number, h:number){
-  return px>=x && px<=x+w && py>=y && py<=y+h;
-}
-function roundRectPath(ctx:CanvasRenderingContext2D, x:number, y:number, w:number, h:number, r:number){
-  const rr = Math.min(r, w/2, h/2);
-  ctx.beginPath();
-  ctx.moveTo(x + rr, y);
-  ctx.lineTo(x + w - rr, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
-  ctx.lineTo(x + w, y + h - rr);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
-  ctx.lineTo(x + rr, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
-  ctx.lineTo(x, y + rr);
-  ctx.quadraticCurveTo(x, y, x + rr, y);
-  ctx.closePath();
-}
+      window.removeEv
