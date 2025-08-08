@@ -3,9 +3,9 @@ import React, { useEffect, useRef, useState } from "react";
 /**
  * Fruit Box — Add to 10 (v1.6, no BGM)
  * - Score = apples removed (each apple = 1 뽀뽀)
- * - Snap-to-grid box; exact sum = 10 highlights green
+ * - Snap-to-grid selection; exact sum = 10 highlights green
  * - Start / Play / Over screens
- * - 2-minute timer bar on the right
+ * - 2-minute timer bar (right)
  * - Uploads: custom apple sprite, end-screen pictures (3–5)
  * - Touch + mouse input
  * - Spring→fall + fade animation; +N 뽀뽀 toast
@@ -17,13 +17,15 @@ type FlyingApple = { x:number; y:number; r:number; life:number; max:number; vx:n
 
 const W = 740, H = 520, TIMER_MAX = 120_000; // 2 min
 
-// --- Defaults from /public (optional). Put images in public/images and list them here.
+// --- Defaults from /public ---
+// Put your photos into public/images and list them here (permanent on deploy)
 const DEFAULT_ENDING_IMAGES: string[] = [
    "/images/JY1.png",
    "/images/JY2.png",
    "/images/JY3.png",
    "/images/JY4.png",
 ];
+// Optional: default apple sprite (transparent PNG in /public/images)
 const DEFAULT_APPLE_SPRITE: string | null = null; // e.g. "/images/apple.png"
 
 export default function FruitBoxClean() {
@@ -45,6 +47,7 @@ export default function FruitBoxClean() {
   const lightRef = useRef<boolean>(light);
   const galleryRef = useRef<HTMLImageElement[]>([]);
   const kissesRef = useRef<number>(kisses);
+  const endImgRef = useRef<HTMLImageElement | null>(null); // locked end-screen image
 
   useEffect(()=>{ applesRef.current = apples; }, [apples]);
   useEffect(()=>{ modeRef.current = mode; }, [mode]);
@@ -61,7 +64,7 @@ export default function FruitBoxClean() {
 
   useEffect(()=>{ resetBoard(); },[]);
 
-  // (Optional) preload defaults
+  // Preload default end photos (once)
   useEffect(() => {
     if (!DEFAULT_ENDING_IMAGES.length) return;
     const imgs: HTMLImageElement[] = [];
@@ -72,12 +75,23 @@ export default function FruitBoxClean() {
       img.src = u;
     });
   }, []);
+
+  // Preload default sprite (once)
   useEffect(() => {
     if (!DEFAULT_APPLE_SPRITE) return;
     const img = new Image();
     img.onload = () => setSpriteImg(img);
     img.src = DEFAULT_APPLE_SPRITE;
   }, []);
+
+  // Lock end-screen image when entering "over"
+  useEffect(() => {
+    if (mode === "over") {
+      const imgs = galleryRef.current;
+      endImgRef.current = imgs.length ? imgs[Math.floor(Math.random() * imgs.length)] : null;
+    }
+    if (mode === "start") endImgRef.current = null; // reset for next game
+  }, [mode]);
 
   function resetBoard(){
     const r = Math.min(rDefault, Math.max(10, Math.min(cellW, cellH)*0.36));
@@ -115,7 +129,7 @@ export default function FruitBoxClean() {
   const dragRef = useRef(drag);
   useEffect(()=>{ dragRef.current = drag; }, [drag]);
 
-  // Toasts/Flying
+  // Toasts & flying apples
   const toastsRef = useRef<Toast[]>([]);
   let toastId = 1;
   const addToast = (x:number,y:number,count:number)=>{
@@ -175,7 +189,7 @@ export default function FruitBoxClean() {
       // timer
       drawTimerBar(ctx, timeLeftRef.current / TIMER_MAX);
 
-      // flying
+      // flying apples
       const nextFly: FlyingApple[] = [];
       for (const f of flyingRef.current){
         const life = f.life+1;
@@ -212,16 +226,21 @@ export default function FruitBoxClean() {
         if (modeRef.current === "over"){
           const cx = W/2 - 60, cy = H/2 - 30;
           ctx.fillText(`Time up! 뽀뽀: ${kissesRef.current}`, cx, cy);
-          const imgX = W/2 + 90, imgY = H/2 - 68, imgSize = 96;
-          const imgs = galleryRef.current;
-          if (imgs.length>0){
-            const img = imgs[Math.floor(Math.random()*imgs.length)];
-            ctx.save(); roundRectPath(ctx, imgX, imgY, imgSize, imgSize, 16); ctx.clip(); ctx.drawImage(img, imgX, imgY, imgSize, imgSize); ctx.restore();
+
+          // End image (locked once; aspect-fit inside rounded square)
+          const imgX = W/2 + 90, imgY = H/2 - 80, imgSize = 128;
+          const chosen = endImgRef.current;
+          if (chosen) {
+            drawImageContain(ctx, chosen, imgX, imgY, imgSize, imgSize, 16);
           } else {
-            ctx.save(); roundRectPath(ctx, imgX, imgY, imgSize, imgSize, 16); ctx.fillStyle="#ffffff33"; ctx.fill();
+            ctx.save();
+            roundRectPath(ctx, imgX, imgY, imgSize, imgSize, 16);
+            ctx.fillStyle="#ffffff33"; ctx.fill();
             ctx.font="64px ui-sans-serif, system-ui"; ctx.fillStyle="#fff"; ctx.textAlign="center"; ctx.textBaseline="middle";
-            ctx.fillText("😊", imgX+imgSize/2, imgY+imgSize/2+4); ctx.restore();
+            ctx.fillText("😊", imgX+imgSize/2, imgY+imgSize/2+4);
+            ctx.restore();
           }
+
           drawButton(ctx, W/2 - 60, H/2 + 20, 120, 40, "Play again");
         }
       }
@@ -365,7 +384,8 @@ export default function FruitBoxClean() {
   );
 }
 
-// Helpers
+/* ===== Helpers ===== */
+
 function drawApple(
   ctx: CanvasRenderingContext2D,
   a: Apple,
@@ -426,4 +446,25 @@ function roundRectPath(ctx:CanvasRenderingContext2D, x:number, y:number, w:numbe
   ctx.lineTo(x, y + rr);
   ctx.quadraticCurveTo(x, y, x + rr, y);
   ctx.closePath();
+}
+
+/** Draw image aspect-fit into rounded rect */
+function drawImageContain(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  x: number, y: number, w: number, h: number,
+  radius = 16
+){
+  ctx.save();
+  roundRectPath(ctx, x, y, w, h, radius);
+  ctx.clip();
+
+  const scale = Math.min(w / img.width, h / img.height);
+  const dw = img.width * scale;
+  const dh = img.height * scale;
+  const dx = x + (w - dw) / 2;
+  const dy = y + (h - dh) / 2;
+
+  ctx.drawImage(img, dx, dy, dw, dh);
+  ctx.restore();
 }
