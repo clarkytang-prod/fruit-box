@@ -1,4 +1,4 @@
-import FruitBox from "./FruitBox";
+import FruitBox from "./FruitBoxClean";
 
 export default function App() {
   return <FruitBox />;
