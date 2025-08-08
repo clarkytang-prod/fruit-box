@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 
-// Fruit Box (Add-to-10) — v1.6 minimal export build
-// • Score = apples removed (each apple = 1 kiss)
-// • Snap-to-grid select; exact-sum=10 highlights green
-// • Start/Play/Over screens
-// • 2-minute timer bar on right
-// • Uploads: custom apple sprite, end-screen pictures (3–5), custom BGM (mp3/wav/ogg)
-// • Touch + mouse input
-// • Spring→fall+fade animation; +N Kisses toast
+/**
+ * Fruit Box — Add to 10 (v1.6, no BGM)
+ * - Score = apples removed (each apple = 1 뽀뽀)
+ * - Snap-to-grid box; exact sum = 10 highlights green
+ * - Start / Play / Over screens
+ * - 2-minute timer bar on the right
+ * - Uploads: custom apple sprite, end-screen pictures (3–5)
+ * - Touch + mouse input
+ * - Spring→fall + fade animation; +N 뽀뽀 toast
+ */
 
 type Apple = { id: number; x: number; y: number; r: number; v: number };
 type Toast = { id: number; x: number; y: number; life: number; max: number; text: string };
@@ -15,19 +17,26 @@ type FlyingApple = { x:number; y:number; r:number; life:number; max:number; vx:n
 
 const W = 740, H = 520, TIMER_MAX = 120_000; // 2 min
 
-export default function FruitBox() {
+// --- Defaults from /public (optional). Put images in public/images and list them here.
+const DEFAULT_ENDING_IMAGES: string[] = [
+  // "/images/end1.jpg",
+  // "/images/end2.jpg",
+  // "/images/end3.jpg",
+];
+const DEFAULT_APPLE_SPRITE: string | null = null; // e.g. "/images/apple.png"
+
+export default function FruitBoxClean() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [apples, setApples] = useState<Apple[]>([]);
-  const [kisses, setKisses] = useState(0);
+  const [kisses, setKisses] = useState(0); // apples removed
   const [light, setLight] = useState(false);
   const [spriteImg, setSpriteImg] = useState<HTMLImageElement | null>(null);
   const [mode, setMode] = useState<"start"|"play"|"over">("start");
   const [timeLeft, setTimeLeft] = useState(TIMER_MAX);
   const [gallery, setGallery] = useState<HTMLImageElement[]>([]);
-  const [bgmAudio, setBgmAudio] = useState<HTMLAudioElement | null>(null);
 
-  // Refs
+  // Refs (avoid stale closures)
   const applesRef = useRef<Apple[]>([]);
   const modeRef = useRef<typeof mode>(mode);
   const timeLeftRef = useRef<number>(timeLeft);
@@ -50,6 +59,24 @@ export default function FruitBox() {
   const cellH = (H - margin*2)/rows;
 
   useEffect(()=>{ resetBoard(); },[]);
+
+  // (Optional) preload defaults
+  useEffect(() => {
+    if (!DEFAULT_ENDING_IMAGES.length) return;
+    const imgs: HTMLImageElement[] = [];
+    let loaded = 0;
+    DEFAULT_ENDING_IMAGES.forEach((u) => {
+      const img = new Image();
+      img.onload = () => { imgs.push(img); loaded++; if (loaded === DEFAULT_ENDING_IMAGES.length) setGallery(imgs); };
+      img.src = u;
+    });
+  }, []);
+  useEffect(() => {
+    if (!DEFAULT_APPLE_SPRITE) return;
+    const img = new Image();
+    img.onload = () => setSpriteImg(img);
+    img.src = DEFAULT_APPLE_SPRITE;
+  }, []);
 
   function resetBoard(){
     const r = Math.min(rDefault, Math.max(10, Math.min(cellW, cellH)*0.36));
@@ -82,18 +109,6 @@ export default function FruitBox() {
   }, [mode]);
   useEffect(()=>{ if (timeLeft<=0 && mode==="play") setMode("over"); }, [timeLeft, mode]);
 
-  // BGM
-  function onBgm(file: File){
-    const url = URL.createObjectURL(file);
-    const audio = new Audio(url);
-    audio.loop = true; audio.volume = 0.2;
-    setBgmAudio(audio);
-  }
-  function toggleBgm(){
-    if (!bgmAudio) return;
-    if (bgmAudio.paused) bgmAudio.play(); else bgmAudio.pause();
-  }
-
   // Drag
   const [drag, setDrag] = useState({ sx:0, sy:0, x:0, y:0, active:false, liveGood:false });
   const dragRef = useRef(drag);
@@ -103,7 +118,7 @@ export default function FruitBox() {
   const toastsRef = useRef<Toast[]>([]);
   let toastId = 1;
   const addToast = (x:number,y:number,count:number)=>{
-    toastsRef.current.push({ id: toastId++, x, y, life:0, max:50, text: `+${count} Kisses` });
+    toastsRef.current.push({ id: toastId++, x, y, life:0, max:50, text: `+${count} 뽀뽀` });
   };
   const flyingRef = useRef<FlyingApple[]>([]);
 
@@ -190,12 +205,12 @@ export default function FruitBox() {
         ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(0,0,W,H);
         ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = "24px ui-sans-serif, system-ui";
         if (modeRef.current === "start"){
-          ctx.fillText("우리 둘만의 Fruit Box", W/2, H/2 - 30);
+          ctx.fillText("우리 둘만의 뽀뽀 박스", W/2, H/2 - 30);
           drawButton(ctx, W/2 - 60, H/2, 120, 40, "Play");
         }
         if (modeRef.current === "over"){
           const cx = W/2 - 60, cy = H/2 - 30;
-          ctx.fillText(`Time up! Kisses: ${kissesRef.current}`, cx, cy);
+          ctx.fillText(`Time up! 뽀뽀: ${kissesRef.current}`, cx, cy);
           const imgX = W/2 + 90, imgY = H/2 - 68, imgSize = 96;
           const imgs = galleryRef.current;
           if (imgs.length>0){
@@ -210,10 +225,10 @@ export default function FruitBox() {
         }
       }
 
-      requestAnimationFrame(render);
+      raf = requestAnimationFrame(render);
     };
-    requestAnimationFrame(render);
-    return ()=>{ ro.disconnect(); };
+    raf = requestAnimationFrame(render);
+    return ()=>{ cancelAnimationFrame(raf); ro.disconnect(); };
   }, []);
 
   // Input (mouse + touch)
@@ -310,12 +325,11 @@ export default function FruitBox() {
         <div className="bg-white rounded-2xl shadow-xl p-4">
           <div className="flex items-center justify-between mb-2">
             <div>
-              <h1 className="text-2xl font-semibold">우리 둘만의 Fruit Box</h1>
+              <h1 className="text-2xl font-semibold">우리 둘만의 뽀뽀 박스</h1>
               <p className="text-sm text-neutral-600">합계 10 — v1.6</p>
             </div>
             <div className="flex gap-2">
               <button onClick={()=>{ resetBoard(); setMode("start"); }} className="px-3 py-1.5 rounded-xl bg-neutral-900 text-white text-sm shadow">Reset</button>
-              <button onClick={toggleBgm} className="px-3 py-1.5 rounded-xl bg-fuchsia-600 text-white text-sm shadow">BGM {bgmAudio && !bgmAudio.paused ? "On" : "Off"}</button>
             </div>
           </div>
 
@@ -324,7 +338,7 @@ export default function FruitBox() {
           </div>
 
           <div className="mt-2 flex items-center gap-4 text-sm text-neutral-700">
-            <span className="rounded-xl bg-neutral-100 px-3 py-2">Kisses: {kisses}</span>
+            <span className="rounded-xl bg-neutral-100 px-3 py-2">뽀뽀: {kisses}</span>
             <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={light} onChange={(e)=>setLight(e.target.checked)} /><span>Light colors</span></label>
             <span className="text-xs text-neutral-500 ml-auto">Timer: {(timeLeft/1000).toFixed(0)}s</span>
           </div>
@@ -342,11 +356,6 @@ export default function FruitBox() {
               <label className="text-sm font-medium">End screen pictures (3–5)</label>
               <input className="mt-1 block w-full text-sm" type="file" accept="image/*" multiple onChange={(e)=> onGallery(e.target.files)} />
               <p className="text-xs text-neutral-500 mt-1">Shown next to the final score. If none, a 😊 placeholder appears.</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Custom BGM (mp3/wav/ogg)</label>
-              <input className="mt-1 block w-full text-sm" type="file" accept="audio/*" onChange={(e)=>{ const f=e.target.files?.[0]; if (f) onBgm(f); }} />
-              <p className="text-xs text-neutral-500 mt-1">Upload a short, looping-friendly track. Tap the BGM button to play/pause.</p>
             </div>
           </div>
         </div>
