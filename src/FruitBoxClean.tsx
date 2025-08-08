@@ -215,7 +215,7 @@ export default function FruitBoxClean() {
           const imgX = W/2 + 90, imgY = H/2 - 68, imgSize = 96;
           const imgs = galleryRef.current;
           if (imgs.length>0){
-            const img = imgs[0];
+            const img = imgs[Math.floor(Math.random()*imgs.length)];
             ctx.save(); roundRectPath(ctx, imgX, imgY, imgSize, imgSize, 16); ctx.clip(); ctx.drawImage(img, imgX, imgY, imgSize, imgSize); ctx.restore();
           } else {
             ctx.save(); roundRectPath(ctx, imgX, imgY, imgSize, imgSize, 16); ctx.fillStyle="#ffffff33"; ctx.fill();
