@@ -19,9 +19,10 @@ const W = 740, H = 520, TIMER_MAX = 120_000; // 2 min
 
 // --- Defaults from /public (optional). Put images in public/images and list them here.
 const DEFAULT_ENDING_IMAGES: string[] = [
-  // "/images/end1.jpg",
-  // "/images/end2.jpg",
-  // "/images/end3.jpg",
+   "/images/JY1.png",
+   "/images/JY2.png",
+   "/images/JY3.png",
+   "/images/JY4.png",
 ];
 const DEFAULT_APPLE_SPRITE: string | null = null; // e.g. "/images/apple.png"
 
